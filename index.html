@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poké-Analyzer Pro: Ultimate</title>
+    <style>
+        :root { --bg: #0d0f12; --box: #1a1d23; --primary: #ff5350; --accent: #2196f3; --text: #f0f0f0; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; }
+        header { text-align: center; margin-bottom: 20px; }
+        .badge { background: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 12px; vertical-align: middle; }
+        
+        .tab-menu { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .tab-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 16px; font-weight: bold; padding: 10px 20px; transition: 0.3s; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        .hidden { display: none !important; }
+
+        .box { background: var(--box); border-radius: 12px; padding: 20px; border: 1px solid #2d3139; margin-bottom: 20px; }
+        .search-box, .search-mini { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; background: #000; border: 1px solid #333; color: white; padding: 12px; border-radius: 8px; }
+        button { background: var(--primary); border: none; color: white; padding: 10px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+        .visual-box { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .visual-box img { width: 220px; height: 220px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,83,80,0.2)); }
+        
+        .stat-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; }
+        .bar-bg { flex: 1; background: #333; height: 10px; border-radius: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--primary); transition: width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .def-bar { background: var(--accent) !important; }
+
+        .dual-grid { display: flex; align-items: stretch; gap: 20px; }
+        .side { flex: 1; background: #252830; padding: 25px; border-radius: 15px; position: relative; border: 1px solid #333; }
+        .side-tag { position: absolute; top: -12px; left: 20px; font-size: 11px; padding: 4px 12px; border-radius: 6px; color: white; font-weight: 900; letter-spacing: 1px; }
+        .red { background: var(--primary); box-shadow: 0 4px 10px rgba(255,83,80,0.3); }
+        .blue { background: var(--accent); box-shadow: 0 4px 10px rgba(33,150,243,0.3); }
+        
+        .vs-circle { align-self: center; background: #333; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-style: italic; color: var(--primary); border: 2px solid var(--primary); }
+        
+        .control-group { margin-bottom: 18px; }
+        .control-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; font-weight: bold; }
+        .flex-row { display: flex; gap: 10px; }
+        select, .num-input { width: 100%; background: #0d0f12; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; font-size: 14px; }
+        
+        .result-display { margin-top: 30px; text-align: center; background: #000; padding: 30px; border-radius: 15px; border: 1px solid var(--primary); }
+        .power-label { font-size: 24px; color: #ffeb3b; font-weight: 900; margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,235,59,0.3); }
+        .verdict { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="pokedex-app">
+    <header>
+        <h1>POKÉ-ANALYZER <span class="badge">ULTIMATE</span></h1>
+        <nav class="tab-menu">
+            <button onclick="switchTab('info')" class="tab-btn active" id="tabInfo">DATABASE</button>
+            <button onclick="switchTab('sim')" class="tab-btn" id="tabSim">SIMULATOR</button>
+        </nav>
+    </header>
+
+    <section id="infoSection" class="tab-content">
+        <div class="search-box">
+            <input type="text" id="mainSearch" placeholder="포켓몬 영문 이름을 입력하세요 (예: Gengar)">
+            <button onclick="runGlobalSearch()">검색하기</button>
+        </div>
+        <div id="infoDashboard" class="hidden">
+            <div class="info-grid">
+                <div class="box visual-box">
+                    <h2 id="pokeName"></h2>
+                    <img id="pokeImg" src="" alt="">
+                </div>
+                <div class="box stats-box">
+                    <h3>Base Stats</h3>
+                    <div id="baseStatsDisplay"></div>
+                </div>
+            </div>
+            <div class="box">
+                <h3 style="margin-top:0;">📊 Competitive Meta Data</h3>
+                <div class="info-grid" style="grid-template-columns: repeat(3, 1fr); text-align: center;">
+                    <div><small style="color:#888">Recommended Item</small><br><b id="metaItem" style="color:var(--primary); font-size:18px;">-</b></div>
+                    <div><small style="color:#888">Nature</small><br><b id="metaNature" style="color:var(--primary); font-size:18px;">-</b></div>
+                    <div><small style="color:#888">Main Role</small><br><b id="metaRole" style="color:var(--primary); font-size:18px;">-</b></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="simSection" class="tab-content hidden">
+        <div class="box calc-section">
+            <div class="dual-grid">
+                <div class="side attacker">
+                    <span class="side-tag red">ATTACKER</span>
+                    <h4 id="atkSimName" style="margin: 5px 0 20px 0; font-size: 20px;">먼저 포켓몬을 검색하세요</h4>
+                    
+                    <div class="control-group">
+                        <label>성격 & 특성 (Nature & Ability)</label>
+                        <div class="flex-row">
+                            <select id="atkNature" onchange="calculateImpact()">
+                                <option value="1.1">상승 성격 (1.1x)</option>
+                                <option value="1.0">보통 성격 (1.0x)</option>
+                            </select>
+                            <select id="atkAbility" onchange="calculateImpact()">
+                                <option value="1">특성 보정 없음</option>
+                                <option value="1.3">생명의구슬류 (1.3x)</option>
+                                <option value="1.5">구애시리즈/도구 (1.5x)</option>
+                                <option value="2.0">천하장사급 (2.0x)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>공격 타입 & 기술 위력</label>
+                        <div class="flex-row">
+                            <select id="atkType" onchange="calculateImpact()">
+                                <option value="special">Special (특수공격)</option>
+                                <option value="physical">Physical (물리공격)</option>
+                            </select>
+                            <input type="number" id="movePwr" class="num-input" value="80" oninput="calculateImpact()">
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>노력치(EV) 투자: <span id="atkEVVal" style="color:var(--primary); font-weight:bold;">252</span></label>
+                        <input type="range" id="atkEV" min="0" max="252" value="252" step="4" oninput="calculateImpact()" style="width:100%;">
+                    </div>
+                </div>
+
+                <div class="vs-circle">VS</div>
+
+                <div class="side defender">
+                    <span class="side-tag blue">DEFENDER</span>
+                    <div class="search-mini">
+                        <input type="text" id="defSearch" placeholder="상대 포켓몬 이름...">
+                        <button onclick="setTarget()">설정</button>
+                    </div>
+                    
+                    <div id="defVisual" class="hidden">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <img id="defImg" src="" style="width:70px; height:70px;">
+                            <h5 id="defNameDisplay" style="font-size:18px; margin:0;"></h5>
+                        </div>
+                        <div id="defStatsDisplay" style="margin-top:10px;"></div>
+                    </div>
+
+                    <div class="control-group" style="margin-top:15px;">
+                        <label>상대 노력치 투자 (HP / 방어or특방)</label>
+                        <div class="flex-row">
+                            <input type="number" id="defHPEV" class="num-input" placeholder="HP 0~252" value="0" oninput="calculateImpact()">
+                            <input type="number" id="defEV" class="num-input" placeholder="DEF 0~252" value="0" oninput="calculateImpact()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-display">
+                <div class="power-label">결정력 (Total Power): <span id="purePowerVal">0</span></div>
+                <div id="impactVerdict" class="verdict">상대 포켓몬을 설정하면 분석이 시작됩니다.</div>
+                <div class="bar-bg" style="height:20px; background:#222;"><div id="impactBar" class="bar-fill" style="width:0%;"></div></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+let attackerData = null;
+let defenderData = null;
+
+const metaDb = { 
+    "gengar": ["Life Orb", "Timid", "Special Sweeper"], 
+    "dragapult": ["Choice Specs", "Timid", "Fast Sweeper"],
+    "garchomp": ["Rocky Helmet", "Jolly", "Physical Tank"],
+    "zacian": ["Rusted Sword", "Jolly", "Uber Attacker"]
+};
+
+window.switchTab = function(tab) {
+    document.getElementById('infoSection').classList.toggle('hidden', tab !== 'info');
+    document.getElementById('simSection').classList.toggle('hidden', tab !== 'sim');
+    document.getElementById('tabInfo').classList.toggle('active', tab === 'info');
+    document.getElementById('tabSim').classList.toggle('active', tab === 'sim');
+};
+
+window.runGlobalSearch = async function() {
+    const query = document.getElementById('mainSearch').value.trim().toLowerCase();
+    if(!query) return;
+    try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${query}`);
+        if(!res.ok) throw new Error();
+        attackerData = await res.json();
+        
+        // UI Update
+        document.getElementById('pokeName').innerText = attackerData.name.toUpperCase();
+        document.getElementById('pokeImg').src = attackerData.sprites.other['official-artwork'].front_default;
+        renderStats(attackerData.stats, 'baseStatsDisplay');
+        document.getElementById('atkSimName').innerText = attackerData.name.toUpperCase();
+        
+        // Meta Update (Fix: 무조건 출력되도록 보강)
+        const d = metaDb[query] || ["Focus Sash", "Adamant", "General Build"];
+        document.getElementById('metaItem').innerText = d[0];
+        document.getElementById('metaNature').innerText = d[1];
+        document.getElementById('metaRole').innerText = d[2];
+        
+        document.getElementById('infoDashboard').classList.remove('hidden');
+    } catch (e) { alert("포켓몬 이름을 확인해주세요! (영문 지원)"); }
+};
+
+window.setTarget = async function() {
+    const query = document.getElementById('defSearch').value.trim().toLowerCase();
+    if(!query) return;
+    try {
+        const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${query}`);
+        defenderData = await res.json();
+        
+        document.getElementById('defVisual').classList.remove('hidden');
+        document.getElementById('defNameDisplay').innerText = defenderData.name.toUpperCase();
+        document.getElementById('defImg').src = defenderData.sprites.front_default;
+        renderStats(defenderData.stats, 'defStatsDisplay', true);
+        calculateImpact();
+    } catch (e) { alert("상대 포켓몬을 찾을 수 없습니다."); }
+};
+
+function renderStats(stats, containerId, isMini = false) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    const labels = ["HP", "ATK", "DEF", "SPA", "SPD", "SPE"];
+    stats.forEach((s, i) => {
+        container.innerHTML += `
+            <div class="stat-row">
+                <span style="width:35px; font-weight:bold;">${labels[i]}</span>
+                <div class="bar-bg"><div class="bar-fill ${isMini?'def-bar':''}" style="width:${(s.base_stat/255)*100}%"></div></div>
+                <b style="width:35px; text-align:right;">${s.base_stat}</b>
+            </div>`;
+    });
+}
+
+window.calculateImpact = function() {
+    if (!attackerData || !defenderData) return;
+
+    const ev = parseInt(document.getElementById('atkEV').value);
+    const natureMod = parseFloat(document.getElementById('atkNature').value);
+    const abilityMod = parseFloat(document.getElementById('atkAbility').value);
+    document.getElementById('atkEVVal').innerText = ev;
+    
+    const atkIdx = document.getElementById('atkType').value === 'physical' ? 1 : 3;
+    const baseAtk = attackerData.stats[atkIdx].base_stat;
+    
+    // 공격 실능 (Lv.50)
+    let actualAtk = Math.floor((Math.floor((baseAtk * 2 + 31 + Math.floor(ev / 4)) * 0.5) + 5) * natureMod);
+    actualAtk = Math.floor(actualAtk * abilityMod);
+
+    // 결정력 (자속보정 1.5x 포함)
+    const pwr = parseInt(document.getElementById('movePwr').value) || 0;
+    const purePower = Math.floor(actualAtk * pwr * 1.5);
+    document.getElementById('purePowerVal').innerText = purePower.toLocaleString();
+
+    // 방어자 실능 (물리/특수 대응)
+    const defIdx = document.getElementById('atkType').value === 'physical' ? 2 : 4;
+    const hpev = parseInt(document.getElementById('defHPEV').value) || 0;
+    const defev = parseInt(document.getElementById('defEV').value) || 0;
+    
+    const actualHP = Math.floor((defenderData.stats[0].base_stat * 2 + 31 + Math.floor(hpev / 4)) * 0.5) + 60;
+    const actualDef = Math.floor((defenderData.stats[defIdx].base_stat * 2 + 31 + Math.floor(defev / 4)) * 0.5) + 5;
+
+    // 데미지 계산
+    let dmg = Math.floor(Math.floor(Math.floor(Math.floor(22 * pwr * actualAtk / actualDef) / 50) + 2) * 1.5);
+    const pct = (dmg / actualHP * 100).toFixed(1);
+
+    const verdictBox = document.getElementById('impactVerdict');
+    const bar = document.getElementById('impactBar');
+    
+    verdictBox.innerHTML = `상대에게 <strong>${dmg}</strong> 데미지! (${pct}%) - <strong>${dmg >= actualHP ? '확정 1타 (OHKO)' : Math.ceil(actualHP/dmg)+'타 이내 확정'}</strong>`;
+    bar.style.width = Math.min(pct, 100) + "%";
+    bar.style.backgroundColor = pct >= 100 ? "var(--primary)" : (pct >= 50 ? "#ff9800" : "#4caf50");
+}
+</script>
+
+</body>
+</html>
